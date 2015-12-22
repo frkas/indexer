@@ -1,0 +1,15 @@
+<webscript>
+  <shortname>Node Changes</shortname>
+  <description>
+  Node Changes
+  reindex can be used to get all documents from a specific path  
+  reindexFrom = /app:company_home will reindex every document including userhome
+  reindexFrom = /app:company_home/st:sites will reindex every document in all sites
+  reindexFrom = /app:company_home/st:sites/_specificsitename_ will reindex all documents in a specific site
+  </description>
+  <url>/node/changes/{storeProtocol}/{storeId}?lastTxnId={lastTxnId?}&amp;lastAclChangesetId=${lastAclChangesetId}&amp;maxTxns=${maxTxns?}&amp;maxAclChangesets=${maxAclChangesets?}</url>
+  <url>/node/changes?reindexfrom={reindexfrom}&amp;lastTxnId={lastTxnId?}&amp;maxTxns=${maxTxns?}</url>
+  <authentication>user</authentication>
+  <format default="json">argument</format>
+  <family>Custom Indexer</family>
+</webscript>

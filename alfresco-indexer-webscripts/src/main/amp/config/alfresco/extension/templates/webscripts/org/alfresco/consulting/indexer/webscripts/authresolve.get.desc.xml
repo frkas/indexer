@@ -1,0 +1,11 @@
+<webscript>
+  <shortname>Authority Resolve</shortname>
+  <description>Renders out all authorities related with the given user(name)
+  To get all users use the paging. Note that the index starts at 0
+  </description>
+  <url>/auth/resolve/{username}</url>
+  <url>/auth/resolve/getall?startIndex={startIndex?}&amp;toIndex={toIndex?}</url>
+  <authentication>user</authentication>
+  <format default="json">argument</format>
+  <family>Custom Indexer</family>
+</webscript>
