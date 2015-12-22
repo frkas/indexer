@@ -300,7 +300,7 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 
 		}else{
 			firstPartOfUrl += "/" + "repository";
-			
+
 			//First breadcrumb named Repository
 			BreadCrumb breadCrumb = new BreadCrumb();
 			breadCrumb.setLabel("Repository");
