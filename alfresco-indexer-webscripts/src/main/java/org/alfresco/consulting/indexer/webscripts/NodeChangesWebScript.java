@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,18 +41,19 @@ import freemarker.ext.beans.BeansWrapper;
 import freemarker.template.TemplateHashModel;
 
 /**
- * Renders out a list of nodes (UUIDs) that have been changed in Alfresco; the changes can affect:
- * - A node metadata
- * - Node content
- * - Node ACLs
+ * Renders out a list of nodes (UUIDs) that have been changed in Alfresco; the
+ * changes can affect: - A node metadata - Node content - Node ACLs
  *
- * Please check src/main/amp/config/alfresco/extension/templates/webscripts/com/findwise/alfresco/changes.get.desc.xml
- * to know more about the RestFul interface to invoke the WebScript
+ * Please check
+ * src/main/amp/config/alfresco/extension/templates/webscripts/com/findwise/
+ * alfresco/changes.get.desc.xml to know more about the RestFul interface to
+ * invoke the WebScript
  *
- * List of pending activities (or TODOs)
- * - Move private/static logic into the IndexingService
- * - Using JSON libraries (or StringBuffer), render out the payload without passing through FreeMarker template
- * - Wrap (or Proxy) IndexingDaoImpl into an IndexingService, which (optionally) performs any object manipulation
+ * List of pending activities (or TODOs) - Move private/static logic into the
+ * IndexingService - Using JSON libraries (or StringBuffer), render out the
+ * payload without passing through FreeMarker template - Wrap (or Proxy)
+ * IndexingDaoImpl into an IndexingService, which (optionally) performs any
+ * object manipulation
  */
 public class NodeChangesWebScript extends DeclarativeWebScript {
 
@@ -72,16 +74,15 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 	@Qualifier("FileFolderService")
 	@Autowired
 	protected FileFolderService _fileFolderService;
-	
+
 	@Qualifier("NamespaceService")
 	@Autowired
 	protected NamespaceService _nameSpaceService;
 
-
 	@Override
 	protected Map<String, Object> executeImpl(WebScriptRequest req, Status status, Cache cache) {
 
-		//Fetching request params
+		// Fetching request params
 		Map<String, String> templateArgs = req.getServiceMatch().getTemplateVars();
 		String storeId = templateArgs.get("storeId");
 		String storeProtocol = templateArgs.get("storeProtocol");
@@ -90,55 +91,70 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		String maxTxnsString = req.getParameter("maxTxns");
 		String maxAclChangesetsString = req.getParameter("maxAclChangesets");
 
-		if(req.getParameter("reindexfrom") != null && !req.getParameter("reindexfrom").equals("")){
+		if (req.getParameter("reindexfrom") != null && !req.getParameter("reindexfrom").equals("")) {
 
-			Map<String, Object> model = reindex(req.getParameter("reindexfrom"), storeId, storeProtocol, req.getParameter("startIndex"), req.getParameter("toIndex"));
+			Map<String, Object> model = reindex(req.getParameter("reindexfrom"), storeId, storeProtocol,
+					req.getParameter("startIndex"), req.getParameter("toIndex"));
 
 			return model;
 		}
 
-		//Parsing parameters passed from the WebScript invocation
+		// Parsing parameters passed from the WebScript invocation
 		Long lastTxnId = (lastTxnIdString == null ? null : Long.valueOf(lastTxnIdString));
 		Long lastAclChangesetId = (lastAclChangesetIdString == null ? null : Long.valueOf(lastAclChangesetIdString));
 		Integer maxTxns = (maxTxnsString == null ? maxNodesPerTxns : Integer.valueOf(maxTxnsString));
-		Integer maxAclChangesets = (maxAclChangesetsString == null ? maxNodesPerAcl : Integer.valueOf(maxAclChangesetsString));
+		Integer maxAclChangesets = (maxAclChangesetsString == null ? maxNodesPerAcl
+				: Integer.valueOf(maxAclChangesetsString));
 
-		logger.debug(String.format("Invoking Changes Webscript, using the following params\n" +
-				"lastTxnId: %s\n" +
-				"lastAclChangesetId: %s\n" +
-				"storeId: %s\n" +
-				"storeProtocol: %s\n" +
-				"maxTxns: %s\n", lastTxnId, lastAclChangesetId, storeId, storeProtocol, maxTxns));
+		logger.debug(String.format(
+				"Invoking Changes Webscript, using the following params\n" + "lastTxnId: %s\n"
+						+ "lastAclChangesetId: %s\n" + "storeId: %s\n" + "storeProtocol: %s\n" + "maxTxns: %s\n",
+				lastTxnId, lastAclChangesetId, storeId, storeProtocol, maxTxns));
 
-		//Getting the Store ID on which the changes are requested
-		Pair<Long,StoreRef> store = nodeDao.getStore(new StoreRef(storeProtocol, storeId));
-		if(store == null)
-		{
+		// Getting the Store ID on which the changes are requested
+		Pair<Long, StoreRef> store = nodeDao.getStore(new StoreRef(storeProtocol, storeId));
+		if (store == null) {
 			throw new IllegalArgumentException("Invalid store reference: " + storeProtocol + "://" + storeId);
 		}
 
 		Set<NodeEntity> nodes = new HashSet<NodeEntity>();
-		//Updating the last IDs being processed
-		//Depending on params passed to the request, results will be rendered out
+		// Updating the last IDs being processed
+		// Depending on params passed to the request, results will be rendered
+		// out
 		if (lastTxnId == null) {
 			lastTxnId = new Long(0);
 		}
 		List<NodeEntity> nodesFromTxns = indexingService.getNodesByTransactionId(store, lastTxnId, maxTxns);
 		if (nodesFromTxns != null && nodesFromTxns.size() > 0) {
 			nodes.addAll(nodesFromTxns);
-			lastTxnId = nodesFromTxns.get(nodesFromTxns.size()-1).getTransactionId();
+			lastTxnId = nodesFromTxns.get(nodesFromTxns.size() - 1).getTransactionId();
 		}
 
 		if (lastAclChangesetId == null) {
 			lastAclChangesetId = new Long(0);
 		}
-		List<NodeEntity> nodesFromAcls = indexingService.getNodesByAclChangesetId(store, lastAclChangesetId, maxAclChangesets);
+		List<NodeEntity> nodesFromAcls = indexingService.getNodesByAclChangesetId(store, lastAclChangesetId,
+				maxAclChangesets);
 		if (nodesFromAcls != null && nodesFromAcls.size() > 0) {
 			nodes.addAll(nodesFromAcls);
-			lastAclChangesetId = nodesFromAcls.get(nodesFromAcls.size()-1).getAclChangesetId();
+			lastAclChangesetId = nodesFromAcls.get(nodesFromAcls.size() - 1).getAclChangesetId();
 		}
 
-		//Render them out
+		// Iterate all nodes. The getDeleted method in NodeEntity is not working correctly
+		Iterator<NodeEntity> it = nodes.iterator();
+		while (it.hasNext()) {
+			NodeEntity nodeEntity = it.next();
+
+			NodeRef nodeRef = nodeEntity.getNodeRef();
+			try {
+				//If the file is deleted it will throw an exception
+				String tempName = _nodeService.getProperty(nodeRef, ContentModel.PROP_NAME).toString();
+			} catch (Exception e) {
+				nodeEntity.setDeleted(true);
+			}
+		}
+
+		// Render them out
 		Map<String, Object> model = new HashMap<String, Object>(1, 1.0f);
 		model.put("qnameDao", qnameDao);
 		model.put("nsResolver", namespaceService);
@@ -149,15 +165,18 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		model.put("storeProtocol", storeProtocol);
 		model.put("propertiesUrlTemplate", propertiesUrlTemplate);
 
-		//This allows to call the static method QName.createQName from the FTL template
+		// This allows to call the static method QName.createQName from the FTL
+		// template
 		try {
 			BeansWrapper wrapper = BeansWrapper.getDefaultInstance();
 			TemplateHashModel staticModels = wrapper.getStaticModels();
-			TemplateHashModel qnameStatics = (TemplateHashModel) staticModels.get("org.alfresco.service.namespace.QName");
-			model.put("QName",qnameStatics);
+			TemplateHashModel qnameStatics = (TemplateHashModel) staticModels
+					.get("org.alfresco.service.namespace.QName");
+			model.put("QName", qnameStatics);
 		} catch (Exception e) {
 			throw new AlfrescoRuntimeException(
-					"Cannot add BeansWrapper for static QName.createQName method to be used from a Freemarker template", e);
+					"Cannot add BeansWrapper for static QName.createQName method to be used from a Freemarker template",
+					e);
 		}
 
 		logger.debug(String.format("Attaching %s nodes to the WebScript template", nodes.size()));
@@ -165,17 +184,17 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		return model;
 	}
 
+	private Map<String, Object> reindex(String path, String storeId, String storeProtocol, String startIndexString,
+			String toIndexString) {
 
-	private Map<String, Object> reindex(String path, String storeId, String storeProtocol, String startIndexString, String toIndexString){
-		
-		//Default values
+		// Default values
 		int startIndex = 0;
 		int toIndex = 10;
-		
-		if(startIndexString != null && !startIndexString.equals("")){
+
+		if (startIndexString != null && !startIndexString.equals("")) {
 			startIndex = Integer.parseInt(startIndexString);
 		}
-		if(toIndexString != null && !toIndexString.equals("")){
+		if (toIndexString != null && !toIndexString.equals("")) {
 			toIndex = Integer.parseInt(toIndexString);
 		}
 
@@ -184,59 +203,60 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		model.put("storeProtocol", storeProtocol);
 		model.put("propertiesUrlTemplate", propertiesUrlTemplate);
 
-		String searchString = "SELECT * FROM cmis:document D WHERE CONTAINS(D,'PATH: \"" + path + "//*\"') and not D.cmis:contentStreamMimeType='text/xml' ORDER BY cmis:creationDate";
+		String searchString = "SELECT * FROM cmis:document D WHERE CONTAINS(D,'PATH: \"" + path
+				+ "//*\"') and not D.cmis:contentStreamMimeType='text/xml' ORDER BY cmis:creationDate";
 
 		SearchParameters searchParameters = new SearchParameters();
 		searchParameters.addStore(StoreRef.STORE_REF_WORKSPACE_SPACESSTORE);
 		searchParameters.setLanguage(SearchService.LANGUAGE_CMIS_ALFRESCO);
 		searchParameters.setQuery(searchString);
-		searchParameters.setMaxItems(toIndex-startIndex+1);
+		searchParameters.setMaxItems(toIndex - startIndex + 1);
 		searchParameters.setSkipCount(startIndex);
-		
+
 		ResultSet rs = null;
-		
-		try{
-		rs = _searchService.query(searchParameters);
 
-		List<NodeRef> list = new ArrayList<>();
+		try {
+			rs = _searchService.query(searchParameters);
 
-		list = rs.getNodeRefs();
+			List<NodeRef> list = new ArrayList<>();
 
-		Set<NodeEntity> reindexnodes = new HashSet<NodeEntity>();
-		
-		for(int i=0;i<list.size();i++){
+			list = rs.getNodeRefs();
 
-			Map<QName, Serializable> properties = _nodeService.getProperties(list.get(i));
-			
-			String primaryPath = _nodeService.getPath(list.get(i)).toPrefixString(_nameSpaceService);
-			String contentType = "UNKNOWN";
-			
-			if(primaryPath.contains(wiki)){
-				contentType = wiki;
-			}else if(primaryPath.contains(blog)){
-				contentType = blog;
-			}else if(primaryPath.contains(discussion)){
-				contentType = discussion;
-			}else if(primaryPath.contains(documentLibrary)){
-				contentType = content;
+			Set<NodeEntity> reindexnodes = new HashSet<NodeEntity>();
+
+			for (int i = 0; i < list.size(); i++) {
+
+				Map<QName, Serializable> properties = _nodeService.getProperties(list.get(i));
+
+				String primaryPath = _nodeService.getPath(list.get(i)).toPrefixString(_nameSpaceService);
+				String contentType = "UNKNOWN";
+
+				if (primaryPath.contains(wiki)) {
+					contentType = wiki;
+				} else if (primaryPath.contains(blog)) {
+					contentType = blog;
+				} else if (primaryPath.contains(discussion)) {
+					contentType = discussion;
+				} else if (primaryPath.contains(documentLibrary)) {
+					contentType = content;
+				}
+
+				NodeEntity n = new NodeEntity();
+				n.setUuid((String) properties.get(ContentModel.PROP_NODE_UUID));
+				n.setTypeName(contentType);
+				reindexnodes.add(n);
 			}
-			
-			NodeEntity n = new NodeEntity();
-			n.setUuid((String) properties.get(ContentModel.PROP_NODE_UUID));
-			n.setTypeName(contentType);
-			reindexnodes.add(n);
-		}		
 
-		model.put("reindexnodes", reindexnodes);
-		}finally{
-			if(rs != null){
+			model.put("reindexnodes", reindexnodes);
+		} finally {
+			if (rs != null) {
 				rs.close();
 				rs = null;
 			}
 		}
 		return model;
 	}
-	
+
 	private NamespaceService namespaceService;
 	private QNameDAO qnameDao;
 	private IndexingDaoImpl indexingService;
@@ -245,23 +265,25 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 	private String propertiesUrlTemplate;
 	private int maxNodesPerAcl = 1000;
 	private int maxNodesPerTxns = 1000;
-	
+
 	private final String wiki = "cm:wiki";
 	private final String blog = "cm:blog";
 	private final String discussion = "cm:discussion";
 	private final String documentLibrary = "cm:documentLibrary";
 	private final String content = "cm:content";
 
-
 	public void setNamespaceService(NamespaceService namespaceService) {
 		this.namespaceService = namespaceService;
 	}
+
 	public void setQnameDao(QNameDAO qnameDao) {
 		this.qnameDao = qnameDao;
 	}
+
 	public void setIndexingService(IndexingDaoImpl indexingService) {
 		this.indexingService = indexingService;
 	}
+
 	public void setNodeDao(NodeDAO nodeDao) {
 		this.nodeDao = nodeDao;
 	}
@@ -277,13 +299,14 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 	public void setMaxNodesPerTxns(int maxNodesPerTxns) {
 		this.maxNodesPerTxns = maxNodesPerTxns;
 	}
+
 	private static DynamicNamespacePrefixResolver getNamespaceResolver() {
-	    DynamicNamespacePrefixResolver resolver = new DynamicNamespacePrefixResolver(null);
-	    resolver.registerNamespace(NamespaceService.CONTENT_MODEL_PREFIX, NamespaceService.CONTENT_MODEL_1_0_URI);
-	    resolver.registerNamespace(NamespaceService.APP_MODEL_PREFIX, NamespaceService.APP_MODEL_1_0_URI);
-	    resolver.registerNamespace(SiteModel.SITE_MODEL_PREFIX, SiteModel.SITE_MODEL_URL);
-	    resolver.registerNamespace(NamespaceService.SYSTEM_MODEL_PREFIX,NamespaceService.SYSTEM_MODEL_1_0_URI);
-	    resolver.registerNamespace(NamespaceService.FORUMS_MODEL_PREFIX, NamespaceService.FORUMS_MODEL_1_0_URI);
-	    return resolver;
+		DynamicNamespacePrefixResolver resolver = new DynamicNamespacePrefixResolver(null);
+		resolver.registerNamespace(NamespaceService.CONTENT_MODEL_PREFIX, NamespaceService.CONTENT_MODEL_1_0_URI);
+		resolver.registerNamespace(NamespaceService.APP_MODEL_PREFIX, NamespaceService.APP_MODEL_1_0_URI);
+		resolver.registerNamespace(SiteModel.SITE_MODEL_PREFIX, SiteModel.SITE_MODEL_URL);
+		resolver.registerNamespace(NamespaceService.SYSTEM_MODEL_PREFIX, NamespaceService.SYSTEM_MODEL_1_0_URI);
+		resolver.registerNamespace(NamespaceService.FORUMS_MODEL_PREFIX, NamespaceService.FORUMS_MODEL_1_0_URI);
+		return resolver;
 	}
 }

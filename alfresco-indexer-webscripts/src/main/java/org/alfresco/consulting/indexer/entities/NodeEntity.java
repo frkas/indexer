@@ -1,59 +1,73 @@
 package org.alfresco.consulting.indexer.entities;
 
 public class NodeEntity extends org.alfresco.repo.domain.node.NodeEntity {
-  private String typeName;
-  private String typeNamespace;
-  private Long aclChangesetId;
-  private Long transactionId;
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	private String typeName;
+	private String typeNamespace;
+	private Long aclChangesetId;
+	private Long transactionId;
 
-  @Override
-  public int hashCode()
-  {
-    final int prime = 31;
-    int result = 1;
-    result = prime * result + ((super.getUuid() == null) ? 0 : super.getUuid().hashCode());
-    result = prime * result + ((super.getVersion() == null) ? 0 : super.getVersion().hashCode());
-    return result;
-  }
+	private boolean deleted = false;
 
-  @Override
-  public boolean equals(Object obj)
-  {
-    if (obj == null) return false;
-    if (!(obj instanceof NodeEntity)) return false;
-    NodeEntity that = (NodeEntity) obj;
-    return this.getUuid().equals(that.getUuid()) && this.getVersion().equals(that.getVersion());
-  }
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((super.getUuid() == null) ? 0 : super.getUuid().hashCode());
+		result = prime * result + ((super.getVersion() == null) ? 0 : super.getVersion().hashCode());
+		return result;
+	}
 
-  public String getTypeName() {
-    return typeName;
-  }
+	@Override
+	public boolean equals(Object obj) {
+		if (obj == null)
+			return false;
+		if (!(obj instanceof NodeEntity))
+			return false;
+		NodeEntity that = (NodeEntity) obj;
+		return this.getUuid().equals(that.getUuid()) && this.getVersion().equals(that.getVersion());
+	}
 
-  public void setTypeName(String typeName) {
-    this.typeName = typeName;
-  }
+	public boolean isDeleted() {
+		return deleted;
+	}
 
-  public String getTypeNamespace() {
-    return typeNamespace;
-  }
+	public void setDeleted(boolean deleted) {
+		this.deleted = deleted;
+	}
 
-  public void setTypeNamespace(String typeNamespace) {
-    this.typeNamespace = typeNamespace;
-  }
+	public String getTypeName() {
+		return typeName;
+	}
 
-  public Long getAclChangesetId() {
-    return aclChangesetId;
-  }
+	public void setTypeName(String typeName) {
+		this.typeName = typeName;
+	}
 
-  public void setAclChangesetId(Long aclChangesetId) {
-    this.aclChangesetId = aclChangesetId;
-  }
+	public String getTypeNamespace() {
+		return typeNamespace;
+	}
 
-  public Long getTransactionId() {
-    return transactionId;
-  }
+	public void setTypeNamespace(String typeNamespace) {
+		this.typeNamespace = typeNamespace;
+	}
 
-  public void setTransactionId(Long transactionId) {
-    this.transactionId = transactionId;
-  }
+	public Long getAclChangesetId() {
+		return aclChangesetId;
+	}
+
+	public void setAclChangesetId(Long aclChangesetId) {
+		this.aclChangesetId = aclChangesetId;
+	}
+
+	public Long getTransactionId() {
+		return transactionId;
+	}
+
+	public void setTransactionId(Long transactionId) {
+		this.transactionId = transactionId;
+	}
 }

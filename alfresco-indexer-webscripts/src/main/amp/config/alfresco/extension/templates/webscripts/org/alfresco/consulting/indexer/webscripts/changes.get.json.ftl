@@ -8,7 +8,7 @@
         "propertiesUrl" : "${propertiesUrlTemplate + suffix}",
         "uuid" : "${node.uuid}",
         "type" : "${qname.toPrefixString(nsResolver)}",
-        "deleted" : ${node.getDeleted(qnameDao)?string}
+        "deleted" : ${node.isDeleted()?string}
       }
       <#if node_has_next>,</#if>
     </#list>
