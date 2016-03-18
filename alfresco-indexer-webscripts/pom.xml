@@ -57,12 +57,12 @@
           <artifactId>alfresco-remote-api</artifactId>
           <scope>provided</scope>
         </dependency>
-        <dependency>
+       <!-- <dependency>
           <groupId>${alfresco.groupId}</groupId>
           <artifactId>alfresco-remote-api</artifactId>
           <scope>provided</scope>
           <classifier>config</classifier>
-        </dependency>
+        </dependency>-->
         <!-- Test dependencies -->
         <dependency>
           <groupId>${alfresco.groupId}</groupId>

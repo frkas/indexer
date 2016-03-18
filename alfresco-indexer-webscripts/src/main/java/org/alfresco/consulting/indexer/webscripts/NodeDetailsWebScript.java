@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+//import org.alfresco.jlan.client.info.FileInfo;
 import org.alfresco.model.ContentModel;
 import org.alfresco.model.ForumModel;
 import org.alfresco.repo.domain.node.NodeDAO;
@@ -20,10 +21,13 @@ import org.alfresco.repo.domain.permissions.AclDAO;
 import org.alfresco.repo.security.permissions.AccessControlEntry;
 import org.alfresco.service.cmr.dictionary.DictionaryService;
 import org.alfresco.service.cmr.model.FileFolderService;
+import org.alfresco.service.cmr.model.FileInfo;
 import org.alfresco.service.cmr.rating.RatingService;
 import org.alfresco.service.cmr.repository.ChildAssociationRef;
+import org.alfresco.service.cmr.repository.ContentData;
 import org.alfresco.service.cmr.repository.ContentReader;
 import org.alfresco.service.cmr.repository.ContentService;
+import org.alfresco.service.cmr.repository.MimetypeService;
 import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.service.cmr.repository.NodeService;
 import org.alfresco.service.cmr.repository.Path;
@@ -49,32 +53,30 @@ import org.springframework.extensions.webscripts.WebScriptRequest;
 
 import com.google.gdata.util.common.base.StringUtil;
 
-/** 
- * Given a nodeRef, renders out all data about a node (except binary content): 
- * - Node metadata
- * - Node ACLs
+/**
+ * Given a nodeRef, renders out all data about a node (except binary content): -
+ * Node metadata - Node ACLs
  * 
  * Please check
  * 
- * src/main/amp/config/alfresco/extension/templates/webscripts/com/findwise/alfresco/details.get.desc.xml
- * to know more about the RestFul interface to invoke the WebScript
+ * src/main/amp/config/alfresco/extension/templates/webscripts/com/findwise/
+ * alfresco/details.get.desc.xml to know more about the RestFul interface to
+ * invoke the WebScript
  * 
- * List of pending activities (or TODOs)
- * - Refactor recursive getAllAcls (direct recursion) . Evaluate the possibility
- * to write a SQL statement for that
+ * List of pending activities (or TODOs) - Refactor recursive getAllAcls (direct
+ * recursion) . Evaluate the possibility to write a SQL statement for that
  * 
  * - Move private/static logic into the IndexingService (see notes on
  * 
- * NodeChangesWebScript)
- * - Move the following methods (and related SQL statements) into
+ * NodeChangesWebScript) - Move the following methods (and related SQL
+ * statements) into
  * 
  * IndexingDaoImpl
  * 
- * -- nodeService.getProperties
- * -- nodeService.getAspects
- * -- nodeDao.getNodeAclId
- * -- solrDao.getNodesByAclChangesetId
- * -- nodeService.getType and dictionaryService.isSubClass (should be merged into one)
+ * -- nodeService.getProperties -- nodeService.getAspects --
+ * nodeDao.getNodeAclId -- solrDao.getNodesByAclChangesetId --
+ * nodeService.getType and dictionaryService.isSubClass (should be merged into
+ * one)
  *
  * - Using JSON libraries (or StringBuffer), render out the payload without
  * 
@@ -93,6 +95,8 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 
 	protected static final Log logger = LogFactory.getLog(NodeDetailsWebScript.class);
 	protected static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+	
+	private String spaceCorrectEncode = "%2520";
 
 	@Override
 	protected Map<String, Object> executeImpl(WebScriptRequest req, Status status, Cache cache) {
@@ -108,8 +112,7 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 
 		NodeRef nodeRef = new NodeRef(storeProtocol, storeId, uuid);
 
-		logger.debug(String.format("Invoking ACLs Webscript, using the following params\n" + 
-				"nodeRef: %s\n", nodeRef));
+		logger.debug(String.format("Invoking ACLs Webscript, using the following params\n" + "nodeRef: %s\n", nodeRef));
 
 		// Processing properties
 		Map<QName, Serializable> propertyMap = nodeService.getProperties(nodeRef);
@@ -134,7 +137,7 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 		String path = pathObj.toPrefixString(namespaceService);
 		String siteName = getSiteName(pathObj);
 		String fileName = getFileName(pathObj);
-		String iconName = getIconName(pathObj);
+		String iconName = getIconName(nodeRef);
 
 		String url = getShareUrl();
 
@@ -165,12 +168,18 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 		model.put("aspects", aspects);
 		model.put("path", path);
 		model.put("contentUrlPrefix", contentUrlPrefix);
-		model.put("shareUrlPrefix", url);
-		model.put("thumbnailUrlPrefix", url);
-		model.put("previewUrlPrefix", url);
+		model.put("urlPrefix", url);
 
 		List<BreadCrumb> breadCrumbs = getBreadCrumbs(url, nodeRef);
 		model.put("breadCrumbs", breadCrumbs);
+		
+		//If its a folder we will return the folderview(Just like a breadcrumb)
+		FileInfo fileInfo =_fileFolderService.getFileInfo(nodeRef);
+		if(fileInfo.isFolder()){
+	
+			String folderContentPath = getFolderContentPath(breadCrumbs, propertyMap.get(ContentModel.PROP_NAME).toString());
+			model.put("folderContentPath", folderContentPath);
+		}
 
 		// add the parent nodeRef if there's one
 		ChildAssociationRef primaryParent = nodeService.getPrimaryParent(nodeRef);
@@ -198,42 +207,30 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 
 		// Rendering out the (relative) URL path to Alfresco Share
 		if (!StringUtil.isEmpty(siteName)) {
-			String shareUrlPath = String.format(
-					"/page/site/%s/document-details?nodeRef=%s",
-					siteName,
+			String shareUrlPath = String.format("/page/site/%s/document-details?nodeRef=%s", siteName,
 					nodeRef.toString());
 			model.put("shareUrlPath", shareUrlPath);
 		}
 
 		String thumbnailUrlPath = String.format(
 				"/proxy/alfresco/api/node/%s/%s/%s/content/thumbnails/doclib?c=queue&ph=true&lastModified=1",
-				storeProtocol,
-				storeId,
-				uuid);
+				storeProtocol, storeId, uuid);
 		model.put("thumbnailUrlPath", thumbnailUrlPath);
 
 		if (!StringUtil.isEmpty(fileName)) {
-			String contentDownloadUrl = String.format(
-					"/proxy/alfresco/api/node/content/%s/%s/%s/%s?a=true",
-					storeProtocol,
-					storeId,
-					uuid,
-					fileName);
+			String contentDownloadUrl = String.format("/proxy/alfresco/api/node/content/%s/%s/%s/%s?a=true",
+					storeProtocol, storeId, uuid, fileName);
 			model.put("contentDownloadUrl", contentDownloadUrl);
 		}
 
 		if (!StringUtil.isEmpty(siteName)) {
-			String previewUrlPath = String.format(
-					"/page/site/%s/document-details?nodeRef=%s&previewOnly=true",
-					siteName,
-					nodeRef.toString());
+			String previewUrlPath = String.format("/page/site/%s/document-details?nodeRef=%s&previewOnly=true",
+					siteName, nodeRef.toString());
 			model.put("previewUrlPath", previewUrlPath);
 		}
 
 		if (!StringUtil.isEmpty(iconName)) {
-			String fileTypeIconUrl = String.format(
-					"/res/components/images/filetypes/%s",
-					iconName);
+			String fileTypeIconUrl = String.format("/res/components/images/filetypes/%s", iconName);
 			model.put("fileTypeIconUrl", fileTypeIconUrl);
 		}
 		model.put("tags", taggingService.getTags(nodeRef));
@@ -246,99 +243,102 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 		return model;
 	}
 
+	private String getFolderContentPath(List<BreadCrumb> breadCrumbs, String folderName){
+		
+		//Use the last breadcrump to get the foldercontentpath
+		String folderContentPath = breadCrumbs.get(breadCrumbs.size() -1).getUrl();
+		
+		//Fix spaceencoding
+		folderName = folderName.replace(" ", spaceCorrectEncode);
+		
+		folderContentPath += "%2F" + folderName;
+				
+		return folderContentPath;
+	}
+	
 	/**
 	 * Get the folderPath as breadcrumbs for a given document (NodeRef)
 	 * 
 	 * @param firstPartOfUrl
-	 * 			This will be http(s)://<host>:<port>/<context>
+	 *            This will be http(s)://<host>:<port>/<context>
 	 * @param nodeRef
-	 * 			NodeRef of the document
-	 * @return
-	 * 			A list of BreadCrumb objects
+	 *            NodeRef of the document
+	 * @return A list of BreadCrumb objects
 	 */
-	private List<BreadCrumb> getBreadCrumbs(String firstPartOfUrl, NodeRef nodeRef){
+	private List<BreadCrumb> getBreadCrumbs(String firstPartOfUrl, NodeRef nodeRef) {
+		try {
 
-		String documentLibrary = "cm:documentLibrary";
-		String removablePrefix = "/app:company_home";
-		String stSite = "/st:site";
-		String spaceIncorrectEncode = "_x0020_";
-		String spaceCorrectEncode = "%2520";
+			List<BreadCrumb> breadCrumbs = new ArrayList<>();
 
-		List<BreadCrumb> breadCrumbs = new ArrayList<>();
+			String url = nodeService.getPath(nodeRef).toDisplayPath(nodeService, permissionService);
+			
+			// Add page to firstpartUrl
+			firstPartOfUrl += "/page";
 
-		//Get the parent
-		ChildAssociationRef parentNodeRef = nodeService.getPrimaryParent(nodeRef);	
-		NodeRef p = parentNodeRef.getParentRef();		
+			if (url.startsWith("/Company Home/Sites/")) {
+				url = url.substring("/Company Home/Sites/".length());
 
-		String url = nodeService.getPath(p).toPrefixString(namespaceService);
+				firstPartOfUrl += "/site/";
 
-		//Fix incorrect spaceencodeing
-		url = url.replace(spaceIncorrectEncode, spaceCorrectEncode);		
+				firstPartOfUrl += url.substring(0, url.indexOf('/'));
 
-		//Remove app:home
-		url = url.substring(removablePrefix.length());
+				// Add document library
+				firstPartOfUrl += "/documentlibrary";
 
-		//Add page to firstpartUrl
-		firstPartOfUrl += "/page";
+				// Remove /documentlibrary from url
+				int indexOfDocumentLibrary = url.indexOf("/documentLibrary");
 
-		//Check if its in a site (Starts with /st:sites
-		if(url.startsWith(stSite)){
-			//Remove /st:site and /cm:
-			url = url.substring(stSite.length() + 5);
+				url = url.substring("/documentLibrary".length() + indexOfDocumentLibrary);
 
-			firstPartOfUrl += "/site/";
-			firstPartOfUrl += url.substring(0, url.indexOf('/'));
+				// First breadcrumb named Documents
+				BreadCrumb breadCrumb = new BreadCrumb();
+				breadCrumb.setLabel("Documents");
+				breadCrumb.setUrl(firstPartOfUrl);
+				breadCrumbs.add(breadCrumb);
 
-			//Add document library
-			firstPartOfUrl += "/documentlibrary";
+			} else if (url.startsWith("/Company Home/")) {
 
-			//First breadcrumb named Documents
-			BreadCrumb breadCrumb = new BreadCrumb();
-			breadCrumb.setLabel("Documents");
-			breadCrumb.setUrl(firstPartOfUrl);
-			breadCrumbs.add(breadCrumb);
+				// Remove /company home from url
+				url = url.substring("/Company Home".length());
 
-		}else{
-			firstPartOfUrl += "/" + "repository";
+				firstPartOfUrl += "/repository";
 
-			//First breadcrumb named Repository
-			BreadCrumb breadCrumb = new BreadCrumb();
-			breadCrumb.setLabel("Repository");
-			breadCrumb.setUrl(firstPartOfUrl);
-			breadCrumbs.add(breadCrumb);
-		}
+				// First breadcrumb named Documents
+				BreadCrumb breadCrumb = new BreadCrumb();
+				breadCrumb.setLabel("Documents");
+				breadCrumb.setUrl(firstPartOfUrl);
+				breadCrumbs.add(breadCrumb);
 
-		int indexOfDocumentLibrary = url.indexOf(documentLibrary);
-		if (indexOfDocumentLibrary>0){
-			url = url.substring(indexOfDocumentLibrary + documentLibrary.length());
-		}
+			} else {
+				// Dont create breadcrumb
+				return null;
+			}
 
-		String filterPath = "#filter=path|";
+			String filterPath = "#filter=path|";
 
-		//If url starts wih /app: we wont create thumbnails
-		if(url.startsWith("/app:")){
+			String[] folders = url.split("/");
+
+			// Start with 1, positions 0 will be empty
+			for (int i = 1; i < folders.length; i++) {
+
+				// filterPath += "%2F" + folders[i].replace(zeroEncode, "0");
+				filterPath += "%2F" + folders[i];
+				String nameWithSpaces = folders[i].replace(spaceCorrectEncode, " ");
+				// nameWithSpaces = nameWithSpaces.replace(zeroEncode, "0");
+
+				BreadCrumb breadCrumb = new BreadCrumb();
+				breadCrumb.setLabel(nameWithSpaces);
+				breadCrumb.setUrl(firstPartOfUrl + filterPath.replace(" ", spaceCorrectEncode));
+				breadCrumbs.add(breadCrumb);
+			}
+			return breadCrumbs;
+		} catch (Exception e) {
+			// Can happen for example st:sites
 			return null;
 		}
-
-		String[] folders = url.split("/cm:");
-
-		//Start with 1, positions 0 will be empty
-		for(int i=1;i<folders.length;i++){
-
-			filterPath += "%2F" + folders[i];
-
-			String nameWithSpaces = folders[i].replace(spaceCorrectEncode, " ");
-
-			BreadCrumb breadCrumb = new BreadCrumb();
-			breadCrumb.setLabel(nameWithSpaces);
-			breadCrumb.setUrl(firstPartOfUrl + filterPath);
-			breadCrumbs.add(breadCrumb);
-		}
-
-		return breadCrumbs;
 	}
 
-	private String getShareUrl(){
+	private String getShareUrl() {
 		StringBuffer url = new StringBuffer();
 
 		if ("443".equals(_globalProperties.getProperty("share.port"))) {
@@ -401,12 +401,22 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 		return fileName;
 	}
 
-	private String getIconName(Path path) {
+	private String getIconName(NodeRef nodeRef) {
 
-		String extension = FilenameUtils.getExtension(path.toString());
-		String iconName = extension + "-file-48.png";
+		try {
 
-		return iconName;
+			ContentData contentData = (ContentData) nodeService.getProperty(nodeRef, ContentModel.PROP_CONTENT);
+
+			String nodeMimeType = contentData.getMimetype();
+
+			String iconName = mimetypeService.getExtension(nodeMimeType) + "-file-48.png";
+		
+			return iconName;
+			
+		} catch (Exception e) {
+			return null;
+		}
+
 	}
 
 	private boolean isContentAware(NodeRef nodeRef) {
@@ -512,10 +522,24 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 	private RatingService ratingService;
 	private ContentService contentService;
 	private SiteService siteService;
+	private PermissionService permissionService;
+	private MimetypeService mimetypeService;
 	private String contentUrlPrefix;
-	private String shareUrlPrefix;
-	private String previewUrlPrefix;
-	private String thumbnailUrlPrefix;
+//	private String shareUrlPrefix;
+//	private String previewUrlPrefix;
+//	private String thumbnailUrlPrefix;
+
+	public MimetypeService getMimetypeService() {
+		return mimetypeService;
+	}
+
+	public void setMimetypeService(MimetypeService mimetypeService) {
+		this.mimetypeService = mimetypeService;
+	}
+
+	public void setPermissionService(PermissionService permissionService) {
+		this.permissionService = permissionService;
+	}
 
 	public void setDictionaryService(DictionaryService dictionaryService) {
 		this.dictionaryService = dictionaryService;
@@ -556,16 +580,5 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 	public void setContentUrlPrefix(String contentUrlPrefix) {
 		this.contentUrlPrefix = contentUrlPrefix;
 	}
-
-	public void setShareUrlPrefix(String shareUrlPrefix) {
-		this.shareUrlPrefix = shareUrlPrefix;
-	}
-
-	public void setPreviewUrlPrefix(String previewUrlPrefix) {
-		this.previewUrlPrefix = previewUrlPrefix;
-	}
-
-	public void setThumbnailUrlPrefix(String thumbnailUrlPrefix) {
-		this.thumbnailUrlPrefix = thumbnailUrlPrefix;
-	}
 }
+

@@ -14,55 +14,91 @@ import java.util.Set;
 
 public class IndexingDaoImpl {
 
-  private static final String SELECT_NODES_BY_ACLS = "alfresco.index.select_NodeIndexesByAclChangesetId";
-  private static final String SELECT_NODES_BY_TXNS = "alfresco.index.select_NodeIndexesByTransactionId";
+	private static final String SELECT_NODES_BY_ACLS = "alfresco.index.select_NodeIndexesByAclChangesetId";
+	private static final String SELECT_NODES_BY_TXNS = "alfresco.index.select_NodeIndexesByTransactionId";
+	private static final String SELECT_NODES_BY_FOLDER_TXNS = "alfresco.index.select_NodeIndexesByFolderTransactionId";
 
-  protected static final Log logger = LogFactory.getLog(IndexingDaoImpl.class);
+	protected static final Log logger = LogFactory.getLog(IndexingDaoImpl.class);
 
-  public List<NodeEntity> getNodesByAclChangesetId(Pair<Long, StoreRef> store, Long lastAclChangesetId, int maxResults) {
-    StoreRef storeRef = store.getSecond();
-    if (maxResults <= 0 || maxResults == Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("Maximum results must be a reasonable number.");
-    }
+	public List<NodeEntity> getNodesByAclChangesetId(Pair<Long, StoreRef> store, Long lastAclChangesetId,
+			int maxResults) {
+		StoreRef storeRef = store.getSecond();
+		if (maxResults <= 0 || maxResults == Integer.MAX_VALUE) {
+			throw new IllegalArgumentException("Maximum results must be a reasonable number.");
+		}
 
-    logger.debug("[getNodesByAclChangesetId] On Store "+storeRef.getProtocol()+"://"+storeRef.getIdentifier());
+		logger.debug(
+				"[getNodesByAclChangesetId] On Store " + storeRef.getProtocol() + "://" + storeRef.getIdentifier());
 
-    NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
-    nodeLoadEntity.setStoreId(store.getFirst());
-    nodeLoadEntity.setStoreProtocol(storeRef.getProtocol());
-    nodeLoadEntity.setStoreIdentifier(storeRef.getIdentifier());
-    nodeLoadEntity.setMinId(lastAclChangesetId);
-    nodeLoadEntity.setMaxId(lastAclChangesetId+maxResults);
-    nodeLoadEntity.setAllowedTypes(this.allowedTypes);
+		NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
+		nodeLoadEntity.setStoreId(store.getFirst());
+		nodeLoadEntity.setStoreProtocol(storeRef.getProtocol());
+		nodeLoadEntity.setStoreIdentifier(storeRef.getIdentifier());
+		nodeLoadEntity.setMinId(lastAclChangesetId);
+		nodeLoadEntity.setMaxId(lastAclChangesetId + maxResults);
+		nodeLoadEntity.setAllowedTypes(this.allowedTypes);
 
-    return (List<NodeEntity>) template.selectList(SELECT_NODES_BY_ACLS, nodeLoadEntity, new RowBounds(0, Integer.MAX_VALUE));
-  }
+		List<NodeEntity> returnedObjects = template.selectList(SELECT_NODES_BY_ACLS, nodeLoadEntity,
+				new RowBounds(0, Integer.MAX_VALUE));
 
-  public List<NodeEntity> getNodesByTransactionId(Pair<Long, StoreRef> store, Long lastTransactionId, int maxResults) {
-    StoreRef storeRef = store.getSecond();
-    if (maxResults <= 0 || maxResults == Integer.MAX_VALUE) {
-      throw new IllegalArgumentException("Maximum results must be a reasonable number.");
-    }
+		return returnedObjects;
+	}
 
-    logger.debug("[getNodesByTransactionId] On Store "+storeRef.getProtocol()+"://"+storeRef.getIdentifier());
+	public List<NodeEntity> getNodesByTransactionId(Pair<Long, StoreRef> store, Long lastTransactionId,
+			int maxResults) {
+		StoreRef storeRef = store.getSecond();
+		if (maxResults <= 0 || maxResults == Integer.MAX_VALUE) {
+			throw new IllegalArgumentException("Maximum results must be a reasonable number.");
+		}
 
-    NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
-    nodeLoadEntity.setStoreId(store.getFirst());
-    nodeLoadEntity.setStoreProtocol(storeRef.getProtocol());
-    nodeLoadEntity.setStoreIdentifier(storeRef.getIdentifier());
-    nodeLoadEntity.setMinId(lastTransactionId);
-    nodeLoadEntity.setMaxId(lastTransactionId+maxResults);
-    nodeLoadEntity.setAllowedTypes(this.allowedTypes);
+		logger.debug("[getNodesByTransactionId] On Store " + storeRef.getProtocol() + "://" + storeRef.getIdentifier());
 
-    return (List<NodeEntity>) template.selectList(SELECT_NODES_BY_TXNS, nodeLoadEntity, new RowBounds(0, Integer.MAX_VALUE));
-  }
+		NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
+		nodeLoadEntity.setStoreId(store.getFirst());
+		nodeLoadEntity.setStoreProtocol(storeRef.getProtocol());
+		nodeLoadEntity.setStoreIdentifier(storeRef.getIdentifier());
+		nodeLoadEntity.setMinId(lastTransactionId);
+		nodeLoadEntity.setMaxId(lastTransactionId + maxResults);
+		nodeLoadEntity.setAllowedTypes(this.allowedTypes);
 
-  private SqlSessionTemplate template;
-  private Set<String> allowedTypes;
-  public void setSqlSessionTemplate(SqlSessionTemplate sqlSessionTemplate) {
-    this.template = sqlSessionTemplate;
-  }
-  public void setAllowedTypes(Set<String> allowedTypes) {
-    this.allowedTypes = allowedTypes;
-  }
+		List<NodeEntity> returnedObjects = template.selectList(SELECT_NODES_BY_TXNS, nodeLoadEntity,
+				new RowBounds(0, Integer.MAX_VALUE));
+
+		return returnedObjects;
+	}
+
+	public List<NodeEntity> getNodesByFolderTransactionId(Pair<Long, StoreRef> store, Long lastTransactionId,
+			int maxResults) {
+		StoreRef storeRef = store.getSecond();
+		if (maxResults <= 0 || maxResults == Integer.MAX_VALUE) {
+			throw new IllegalArgumentException("Maximum results must be a reasonable number.");
+		}
+
+		logger.debug("[getNodesByFolderTransactionId] On Store " + storeRef.getProtocol() + "://"
+				+ storeRef.getIdentifier());
+
+		NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
+		nodeLoadEntity.setStoreId(store.getFirst());
+		nodeLoadEntity.setStoreProtocol(storeRef.getProtocol());
+		nodeLoadEntity.setStoreIdentifier(storeRef.getIdentifier());
+		nodeLoadEntity.setMinId(lastTransactionId);
+		nodeLoadEntity.setMaxId(lastTransactionId + maxResults);
+		nodeLoadEntity.setAllowedTypes(this.allowedTypes);
+
+		List<NodeEntity> returnedObjects = template.selectList(SELECT_NODES_BY_FOLDER_TXNS, nodeLoadEntity,
+				new RowBounds(0, Integer.MAX_VALUE));
+
+		return returnedObjects;
+	}
+
+	private SqlSessionTemplate template;
+	private Set<String> allowedTypes;
+
+	public void setSqlSessionTemplate(SqlSessionTemplate sqlSessionTemplate) {
+		this.template = sqlSessionTemplate;
+	}
+
+	public void setAllowedTypes(Set<String> allowedTypes) {
+		this.allowedTypes = allowedTypes;
+	}
 }

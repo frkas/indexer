@@ -16,6 +16,9 @@
   <#if lastTxnId??>
     "last_txn_id" : "${lastTxnId?c}",
   </#if>
+    <#if lastFolderTxnId??>
+    "last_folder_txn_id" : "${lastFolderTxnId?c}",
+  </#if>
   <#if lastAclChangesetId??>
     "last_acl_changeset_id" : "${lastAclChangesetId?c}",
   </#if>

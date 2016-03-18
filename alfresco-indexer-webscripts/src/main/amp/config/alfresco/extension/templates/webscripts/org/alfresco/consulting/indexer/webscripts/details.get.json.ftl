@@ -8,22 +8,25 @@
   ],
   "path" : "${path}",
   <#if shareUrlPath??>
-    "shareUrlPath" : "${shareUrlPrefix + shareUrlPath}",
+    "shareUrlPath" : "${urlPrefix + shareUrlPath}",
   </#if>
   <#if contentUrlPath??>
     "contentUrlPath" : "${contentUrlPrefix + contentUrlPath}",
   </#if>
   <#if thumbnailUrlPath??>
-    "thumbnailUrlPath" : "${thumbnailUrlPrefix + thumbnailUrlPath}",
+    "thumbnailUrlPath" : "${urlPrefix + thumbnailUrlPath}",
   </#if>
  <#if contentDownloadUrl??>
-    "contentDownloadUrl" : "${previewUrlPrefix + contentDownloadUrl}",
+    "contentDownloadUrl" : "${urlPrefix + contentDownloadUrl}",
 </#if>
 <#if previewUrlPath??>
-    "previewUrlPath" : "${shareUrlPrefix + previewUrlPath}",
+    "previewUrlPath" : "${urlPrefix + previewUrlPath}",
 </#if>
+  <#if folderContentPath??>
+    "folderContentPath" : "${folderContentPath}",
+  </#if>
 <#if fileTypeIconUrl??>
-    "fileTypeIconUrl" : "${shareUrlPrefix + fileTypeIconUrl}",
+    "fileTypeIconUrl" : "${urlPrefix + fileTypeIconUrl}",
 </#if>
   <#if parentNodeRef??>
   "parent": "${parentNodeRef}",
@@ -38,7 +41,7 @@
     		"cm:title": "${site["cm:title"]}",
     	</#if>
       	<#if site["dashboardUrlPath"]??>
-    		"dashboardUrlPath": "${shareUrlPrefix + site["dashboardUrlPath"]}"
+    		"dashboardUrlPath": "${urlPrefix + site["dashboardUrlPath"]}"
      	</#if>
   },
   </#if>

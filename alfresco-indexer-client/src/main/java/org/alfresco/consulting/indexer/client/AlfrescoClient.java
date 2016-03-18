@@ -3,7 +3,7 @@ package org.alfresco.consulting.indexer.client;
 import java.util.List;
 import java.util.Map;
 
-public interface AlfrescoClient {
+public interface AlfrescoClient { 
   /**
    * Fetches nodes from Alfresco which has changed since the provided timestamp.
    *

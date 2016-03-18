@@ -14,7 +14,7 @@
 
   <!-- MyBatis config for Alfresco (using common datasource) -->
   <bean id="indexingSqlSessionFactory" class="org.alfresco.ibatis.HierarchicalSqlSessionFactoryBean">
-    <property name="useLocalCaches" value="${mybatis.useLocalCaches}"/>
+   <!--  <property name="useLocalCaches" value="${mybatis.useLocalCaches}"/>-->
     <property name="resourceLoader" ref="dialectResourceLoader"/>
     <property name="dataSource" ref="dataSource"/>
     <property name="configLocation">
@@ -60,10 +60,9 @@
     <property name="ratingService" ref="RatingService" />
     <property name="contentService" ref="ContentService" />
     <property name="siteService" ref="SiteService" />
+    <property name="permissionService" ref="PermissionService" />
+    <property name="mimetypeService" ref="MimetypeService" />
     <property name="contentUrlPrefix" value="${indexer.content.url.prefix}"/>
-    <property name="shareUrlPrefix" value="${indexer.share.url.prefix}"/>
-    <property name="previewUrlPrefix" value="${indexer.preview.url.prefix}"/>
-    <property name="thumbnailUrlPrefix" value="${indexer.thumbnail.url.prefix}"/>
   </bean>
 
   <bean id="webscript.org.alfresco.consulting.indexer.webscripts.authresolve.get"
