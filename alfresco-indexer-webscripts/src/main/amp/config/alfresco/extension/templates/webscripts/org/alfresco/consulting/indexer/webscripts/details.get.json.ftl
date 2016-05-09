@@ -22,9 +22,6 @@
 <#if previewUrlPath??>
     "previewUrlPath" : "${urlPrefix + previewUrlPath}",
 </#if>
-  <#if folderContentPath??>
-    "folderContentPath" : "${folderContentPath}",
-  </#if>
 <#if fileTypeIconUrl??>
     "fileTypeIconUrl" : "${urlPrefix + fileTypeIconUrl}",
 </#if>

@@ -173,14 +173,6 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 		List<BreadCrumb> breadCrumbs = getBreadCrumbs(url, nodeRef);
 		model.put("breadCrumbs", breadCrumbs);
 		
-		//If its a folder we will return the folderview(Just like a breadcrumb)
-		FileInfo fileInfo =_fileFolderService.getFileInfo(nodeRef);
-		if(fileInfo.isFolder()){
-	
-			String folderContentPath = getFolderContentPath(breadCrumbs, propertyMap.get(ContentModel.PROP_NAME).toString());
-			model.put("folderContentPath", folderContentPath);
-		}
-
 		// add the parent nodeRef if there's one
 		ChildAssociationRef primaryParent = nodeService.getPrimaryParent(nodeRef);
 		if (primaryParent != null) {
@@ -205,8 +197,18 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 			model.put("contentUrlPath", contentUrlPath);
 		}
 
+		//If its a folder we will return the folderview(Just like a breadcrumb)
+		FileInfo fileInfo =_fileFolderService.getFileInfo(nodeRef);
+		if(fileInfo.isFolder()){
+	
+			String folderContentPath = getFolderContentPath(breadCrumbs, propertyMap.get(ContentModel.PROP_NAME).toString());
+			
+			//Remove first part of url to adjust to the same format as shareUrlPath
+			String shareUrlPathForFolder = folderContentPath.substring(url.length());
+			model.put("shareUrlPath", shareUrlPathForFolder);
+
 		// Rendering out the (relative) URL path to Alfresco Share
-		if (!StringUtil.isEmpty(siteName)) {
+		}else if (!StringUtil.isEmpty(siteName)) {
 			String shareUrlPath = String.format("/page/site/%s/document-details?nodeRef=%s", siteName,
 					nodeRef.toString());
 			model.put("shareUrlPath", shareUrlPath);

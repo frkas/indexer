@@ -9,6 +9,7 @@ public class NodeEntity extends org.alfresco.repo.domain.node.NodeEntity {
 	private String typeNamespace;
 	private Long aclChangesetId;
 	private Long transactionId;
+	private String userName;
 
 	private boolean deleted = false;
 
@@ -29,6 +30,14 @@ public class NodeEntity extends org.alfresco.repo.domain.node.NodeEntity {
 			return false;
 		NodeEntity that = (NodeEntity) obj;
 		return this.getUuid().equals(that.getUuid()) && this.getVersion().equals(that.getVersion());
+	}
+	
+	public String getUserName() {
+		return userName;
+	}
+
+	public void setUserName(String userName) {
+		this.userName = userName;
 	}
 
 	public boolean isDeleted() {

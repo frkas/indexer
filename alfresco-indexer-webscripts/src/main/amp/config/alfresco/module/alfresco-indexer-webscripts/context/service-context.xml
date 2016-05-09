@@ -44,6 +44,7 @@
     <property name="indexingService" ref="indexingService"/>
     <property name="nodeDao" ref="nodeDAO"/>
     <property name="propertiesUrlTemplate" value="${indexer.properties.url.template}"/>
+    <property name="personPropertiesUrlTemplate" value="${indexer.nodedetails.url.template}"/>
     <property name="maxNodesPerAcl" value="${indexer.changes.nodesperacl}"/>
     <property name="maxNodesPerTxns" value="${indexer.changes.nodespertxn}"/>
   </bean>

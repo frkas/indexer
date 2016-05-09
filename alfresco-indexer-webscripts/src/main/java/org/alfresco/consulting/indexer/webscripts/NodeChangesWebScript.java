@@ -14,6 +14,7 @@ import org.alfresco.consulting.indexer.entities.NodeEntity;
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.domain.node.NodeDAO;
+import org.alfresco.repo.domain.node.StoreEntity;
 import org.alfresco.repo.domain.qname.QNameDAO;
 import org.alfresco.service.cmr.model.FileFolderService;
 import org.alfresco.service.cmr.repository.ContentService;
@@ -23,6 +24,7 @@ import org.alfresco.service.cmr.repository.StoreRef;
 import org.alfresco.service.cmr.search.ResultSet;
 import org.alfresco.service.cmr.search.SearchParameters;
 import org.alfresco.service.cmr.search.SearchService;
+import org.alfresco.service.cmr.security.PersonService;
 import org.alfresco.service.namespace.NamespaceService;
 import org.alfresco.service.namespace.QName;
 import org.alfresco.util.Pair;
@@ -85,10 +87,10 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		String storeId = templateArgs.get("storeId");
 		String storeProtocol = templateArgs.get("storeProtocol");
 		String lastTxnIdString = req.getParameter("lastTxnId");
-		String lastFolderTxnIdString = req.getParameter("lastFolderTxnId");
+		String lastOtherTxnIdString = req.getParameter("lastOtherTxnId");
 		String lastAclChangesetIdString = req.getParameter("lastAclChangesetId");
 		String maxTxnsString = req.getParameter("maxTxns");
-		String maxFolderTxnsString = req.getParameter("maxFolderTxns");
+		String maxOtherTxnsString = req.getParameter("maxOtherTxns");
 		String maxAclChangesetsString = req.getParameter("maxAclChangesets");
 
 		//Will be deprecated
@@ -116,13 +118,19 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 
 		// Parsing parameters passed from the WebScript invocation
 		Long lastTxnId = (lastTxnIdString == null ? null : Long.valueOf(lastTxnIdString));
-		Long lastFolderTxnId = (lastFolderTxnIdString == null ? null : Long.valueOf(lastFolderTxnIdString));
+		Long lastOtherTxnId = (lastOtherTxnIdString == null ? null : Long.valueOf(lastOtherTxnIdString));
 		Long lastAclChangesetId = (lastAclChangesetIdString == null ? null : Long.valueOf(lastAclChangesetIdString));
 		Integer maxTxns = (maxTxnsString == null ? maxNodesPerTxns : Integer.valueOf(maxTxnsString));
-		Integer maxFolderTxns = (maxFolderTxnsString == null ? maxNodesPerFolderTxns
-				: Integer.valueOf(maxFolderTxnsString));
+		Integer maxOtherTxns = (maxOtherTxnsString == null ? maxNodesPerOtherTxns
+				: Integer.valueOf(maxOtherTxnsString));
 		Integer maxAclChangesets = (maxAclChangesetsString == null ? maxNodesPerAcl
 				: Integer.valueOf(maxAclChangesetsString));
+		
+		//Get the lowest startTransactionId for the deletion part of code
+		Long startTransactionId = lastTxnId;
+		if(startTransactionId > lastOtherTxnId){
+			startTransactionId = lastOtherTxnId;
+		}
 
 		logger.debug(String.format(
 				"Invoking Changes Webscript, using the following params\n" + "lastTxnId: %s\n"
@@ -158,15 +166,86 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 			lastAclChangesetId = nodesFromAcls.get(nodesFromAcls.size() - 1).getAclChangesetId();
 		}
 
-		if (lastFolderTxnId == null) {
-			lastFolderTxnId = new Long(0);
+		if (lastOtherTxnId == null) {
+			lastOtherTxnId = new Long(0);
 		}
-		List<NodeEntity> nodesFromFolderTxns = indexingService.getNodesByFolderTransactionId(store, lastFolderTxnId,
-				maxFolderTxns);
-		if (nodesFromFolderTxns != null && nodesFromFolderTxns.size() > 0) {
-			nodes.addAll(nodesFromFolderTxns);
-			lastFolderTxnId = nodesFromFolderTxns.get(nodesFromFolderTxns.size() - 1).getTransactionId();
+		List<NodeEntity> nodesFromOtherTxns = indexingService.getNodesByOtherTransactionId(store, lastOtherTxnId,
+				maxOtherTxns);
+		if (nodesFromOtherTxns != null && nodesFromOtherTxns.size() > 0) {
+			nodes.addAll(nodesFromOtherTxns);
+			lastOtherTxnId = nodesFromOtherTxns.get(nodesFromOtherTxns.size() - 1).getTransactionId();
 		}
+
+		//Get the higest last transaction id
+		Long lastTransactionId = lastTxnId;
+		if(lastTransactionId < lastOtherTxnId){
+			lastTransactionId = lastOtherTxnId;
+		}
+		
+		//Calculate maxTransactionId
+		Long maxTransactionsLong = lastTransactionId - startTransactionId;
+		int maxTransactions = maxTransactionsLong.intValue();
+		if(maxTransactions <= 0){
+			maxTransactions = 1;
+		}
+		
+		List<NodeEntity> deletedNodes = indexingService.getNodesByDeletedObjectsTransactionId(store, startTransactionId,
+				maxTransactions);
+		
+		String userName = "";
+		
+		//Iterate all changed nodes to see if deleted is there or not. If its not add it
+		//Also check if there is a person. Need to change propertiesurl
+		Iterator<NodeEntity> itChangedNodes = nodes.iterator();
+		while (itChangedNodes.hasNext()) {
+
+			NodeEntity changedNodeEntity = itChangedNodes.next();
+
+			String changedNodeUUID = changedNodeEntity.getUuid();
+			
+			if(changedNodeEntity.getTypeName().equals("person")){
+			
+				NodeRef personNode = new NodeRef("workspace://SpacesStore/"+ changedNodeUUID);
+				
+				Map<QName, Serializable> properties = _nodeService.getProperties(personNode);
+				
+				userName = properties.get(ContentModel.PROP_USERNAME).toString();
+
+				changedNodeEntity.setUserName(userName);
+				//Set propertiesUrlTemplate to null so it wont show up in output from ftlfile
+				
+				
+			}else{
+				userName = "";
+			}
+			
+			Iterator<NodeEntity> itDeletedNodes = deletedNodes.iterator();
+			
+			int i = 0;
+			while (itDeletedNodes.hasNext()) {
+
+				NodeEntity deletedNodeEntity = itDeletedNodes.next();
+				String deletedNodeUUID = deletedNodeEntity.getUuid();
+				
+				if(changedNodeUUID.equals(deletedNodeUUID)){
+					//Remove from list
+					deletedNodes.remove(i);
+					break;
+				}
+				i++;
+			}
+		}
+
+		//Iterate all deleted and set deleted = true
+		Iterator<NodeEntity> itDeletedNodes = deletedNodes.iterator();
+		itDeletedNodes = deletedNodes.iterator();
+		while (itDeletedNodes.hasNext()) {
+
+			NodeEntity deletedNodeEntity = itDeletedNodes.next();
+			deletedNodeEntity.setDeleted(true);
+		}
+		
+		nodes.addAll(deletedNodes);
 
 		// Iterate all nodes. The getDeleted method in NodeEntity is not working
 		// correctly
@@ -175,18 +254,8 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 
 			NodeEntity nodeEntity = it.next();
 
-			NodeRef nodeRef;
-			try {
-
-				// This doesnt work for folders
-				nodeRef = nodeEntity.getNodeRef();
-
-			} catch (Exception e) {
-				nodeRef = new NodeRef("workspace://SpacesStore/" + nodeEntity.getUuid());
-			}
-
-			org.alfresco.service.cmr.repository.NodeRef.Status nodeRefStatus = _nodeService.getNodeStatus(nodeRef);
-			if (nodeRefStatus == null || nodeRefStatus.isDeleted()) {
+			StoreEntity storeEntiti = nodeEntity.getStore();
+			if(storeEntiti.getId().intValue() == 5){
 				nodeEntity.setDeleted(true);
 			}
 		}
@@ -197,11 +266,12 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		model.put("nsResolver", namespaceService);
 		model.put("nodes", nodes);
 		model.put("lastTxnId", lastTxnId);
-		model.put("lastFolderTxnId", lastFolderTxnId);
+		model.put("lastOtherTxnId", lastOtherTxnId);
 		model.put("lastAclChangesetId", lastAclChangesetId);
 		model.put("storeId", storeId);
 		model.put("storeProtocol", storeProtocol);
 		model.put("propertiesUrlTemplate", propertiesUrlTemplate);
+		model.put("personPropertiesUrlTemplate", personPropertiesUrlTemplate);
 
 		// This allows to call the static method QName.createQName from the FTL
 		// template
@@ -389,6 +459,76 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		model.put("reindexnodes", reindexnodes);
 		return model;
 	}
+	
+	private Map<String, Object> reindexPersons(String path, String storeId, String storeProtocol,
+			String startIndexString, String toIndexString) {
+
+		Map<String, Object> model = new HashMap<String, Object>(1, 1.0f);
+		model.put("storeId", storeId);
+		model.put("storeProtocol", storeProtocol);
+		model.put("propertiesUrlTemplate", propertiesUrlTemplate);
+
+		String searchString = "SELECT * FROM cmis:document D WHERE CONTAINS(D,'PATH: \"" + path
+				+ "//*\"') and not D.cmis:contentStreamMimeType='text/xml' ORDER BY cmis:creationDate";
+
+		List<NodeRef> list = getListOfNodeRefsFromSearchString(searchString, startIndexString, toIndexString);
+
+		Set<NodeEntity> reindexnodes = new HashSet<NodeEntity>();
+
+		for (int i = 0; i < list.size(); i++) {
+
+			Map<QName, Serializable> properties = _nodeService.getProperties(list.get(i));
+
+			String primaryPath = _nodeService.getPath(list.get(i)).toPrefixString(_nameSpaceService);
+			String contentType = "UNKNOWN";
+
+			if (primaryPath.contains(wiki)) {
+				contentType = wiki;
+			} else if (primaryPath.contains(blog)) {
+				contentType = blog;
+			} else if (primaryPath.contains(discussion)) {
+				contentType = discussion;
+			} else if (primaryPath.contains(documentLibrary) || primaryPath.contains(published)) {
+				contentType = content;
+			}
+
+			NodeEntity n = new NodeEntity();
+			n.setUuid((String) properties.get(ContentModel.PROP_NODE_UUID));
+			n.setTypeName(contentType);
+			reindexnodes.add(n);
+		}
+
+		// If startindex is 0 or less its the first page and we also return
+		// folder/site id
+		if (startIndexString == null || startIndexString.equals("") || startIndexString.equals("0")) {
+			StoreRef storeRef = new StoreRef(StoreRef.PROTOCOL_WORKSPACE, "SpacesStore");
+			ResultSet rsRootFolder = _searchService.query(storeRef, SearchService.LANGUAGE_LUCENE,
+					"PATH:\"" + path + "\"");
+
+			try {
+				if (rsRootFolder.length() >= 0) {
+
+					NodeRef nodeRefRootFolder = rsRootFolder.getNodeRef(0);
+					NodeEntity n = new NodeEntity();
+					n.setUuid((String) nodeRefRootFolder.getId());
+
+					if (path.contains("cm:documentLibrary")) {
+						n.setTypeName("cm:folder");
+					} else {
+						n.setTypeName("st:site");
+					}
+
+					reindexnodes.add(n);
+				}
+
+			} finally {
+				rsRootFolder.close();
+			}
+		}
+
+		model.put("reindexnodes", reindexnodes);
+		return model;
+	}
 
 	private NamespaceService namespaceService;
 	private QNameDAO qnameDao;
@@ -396,9 +536,11 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 	private NodeDAO nodeDao;
 
 	private String propertiesUrlTemplate;
+	private String personPropertiesUrlTemplate;
+
 	private int maxNodesPerAcl = 1000;
 	private int maxNodesPerTxns = 1000;
-	private int maxNodesPerFolderTxns = 1000;
+	private int maxNodesPerOtherTxns = 1000;
 
 	private final String wiki = "cm:wiki";
 	private final String blog = "cm:blog";
@@ -407,6 +549,13 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 	private final String content = "cm:content";
 	private final String published = "cm:corporate_information_collection";
 
+	public String getPersonPropertiesUrlTemplate() {
+		return personPropertiesUrlTemplate;
+	}
+
+	public void setPersonPropertiesUrlTemplate(String personPropertiesUrlTemplate) {
+		this.personPropertiesUrlTemplate = personPropertiesUrlTemplate;
+	}
 	public void setNamespaceService(NamespaceService namespaceService) {
 		this.namespaceService = namespaceService;
 	}
