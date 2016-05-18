@@ -31,7 +31,7 @@
     <#list reindexnodes as node>
       {
       <#assign suffix="/"+storeProtocol+"/"+storeId+"/"+node.uuid >
-        "propertiesUrl" : "${propertiesUrlTemplate + suffix}",
+        <#if node.userName??>"propertiesUrl" : "${personPropertiesUrlTemplate + node.userName}",<#elseif propertiesUrlTemplate??>"propertiesUrl" : "${propertiesUrlTemplate + suffix}",</#if>
         "uuid" : "${node.uuid}",
         "type" : "${node.typeName}"
       }
@@ -41,4 +41,3 @@
 </@compress>
 </#if>  
 }
-

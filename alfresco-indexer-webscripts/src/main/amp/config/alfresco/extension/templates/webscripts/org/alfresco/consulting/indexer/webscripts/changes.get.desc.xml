@@ -12,6 +12,7 @@
   <url>/node/changes?reindexfrom={reindexfrom}&amp;lastTxnId={lastTxnId?}&amp;maxTxns=${maxTxns?}</url>
   <url>/node/changes?reindexDocumentsFrom={reindexDocumentsFrom}&amp;startIndex={startIndex?}&amp;toIndex=${toIndex?}</url>
   <url>/node/changes?reindexFoldersFrom={reindexFoldersFrom}&amp;startIndex={startIndex?}&amp;toIndex=${toIndex?}</url>
+  <url>/node/changes/{reindexProfiles}</url>
   <authentication>user</authentication>
   <format default="json">argument</format>
   <family>Custom Indexer</family>
