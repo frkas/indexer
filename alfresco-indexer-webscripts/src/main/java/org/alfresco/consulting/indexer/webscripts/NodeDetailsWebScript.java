@@ -52,6 +52,7 @@ import org.springframework.extensions.webscripts.Status;
 import org.springframework.extensions.webscripts.WebScriptRequest;
 
 import com.google.gdata.util.common.base.StringUtil;
+import com.scania.alfresco.drs.repo.model.DrsModel;
 
 /**
  * Given a nodeRef, renders out all data about a node (except binary content): -
@@ -230,7 +231,14 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 					siteName, nodeRef.toString());
 			model.put("previewUrlPath", previewUrlPath);
 		}
-
+		
+		else if(nodeService.hasAspect(nodeRef, DrsModel.ASPECT_RELEASED)){
+	
+			String previewUrlPath = String.format("/page/document-details?nodeRef=%s&previewOnly=true",
+					nodeRef.toString());
+			model.put("previewUrlPath", previewUrlPath);
+		}
+		
 		if (!StringUtil.isEmpty(iconName)) {
 			String fileTypeIconUrl = String.format("/res/components/images/filetypes/%s", iconName);
 			model.put("fileTypeIconUrl", fileTypeIconUrl);
