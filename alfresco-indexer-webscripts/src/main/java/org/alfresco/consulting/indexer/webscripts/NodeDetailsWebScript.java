@@ -201,11 +201,12 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 		//If its a folder we will return the folderview(Just like a breadcrumb)
 		FileInfo fileInfo =_fileFolderService.getFileInfo(nodeRef);
 		if(fileInfo.isFolder()){
-	
+
 			String folderContentPath = getFolderContentPath(breadCrumbs, propertyMap.get(ContentModel.PROP_NAME).toString());
 			
 			//Remove first part of url to adjust to the same format as shareUrlPath
 			String shareUrlPathForFolder = folderContentPath.substring(url.length());
+			
 			model.put("shareUrlPath", shareUrlPathForFolder);
 
 		// Rendering out the (relative) URL path to Alfresco Share
@@ -257,11 +258,12 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 		
 		//Use the last breadcrump to get the foldercontentpath
 		String folderContentPath = breadCrumbs.get(breadCrumbs.size() -1).getUrl();
-		
 		//Fix spaceencoding
 		folderName = folderName.replace(" ", spaceCorrectEncode);
 		
-		folderContentPath += "%2F" + folderName;
+		if(breadCrumbs.size()>1){
+			folderContentPath += "%2F" + folderName;
+		}
 				
 		return folderContentPath;
 	}

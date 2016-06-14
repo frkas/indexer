@@ -21,6 +21,7 @@ import org.alfresco.service.cmr.repository.ContentService;
 import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.service.cmr.repository.NodeService;
 import org.alfresco.service.cmr.repository.StoreRef;
+import org.alfresco.service.cmr.search.LimitBy;
 import org.alfresco.service.cmr.search.ResultSet;
 import org.alfresco.service.cmr.search.SearchParameters;
 import org.alfresco.service.cmr.search.SearchService;
@@ -319,6 +320,7 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		if (toIndexString != null && !toIndexString.equals("")) {
 			toIndex = Integer.parseInt(toIndexString);
 		}
+		int maxindex = toIndex - startIndex + 1;
 
 		SearchParameters searchParameters = new SearchParameters();
 		searchParameters.addStore(StoreRef.STORE_REF_WORKSPACE_SPACESSTORE);
@@ -326,6 +328,11 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		searchParameters.setQuery(searchString);
 		searchParameters.setMaxItems(toIndex - startIndex + 1);
 		searchParameters.setSkipCount(startIndex);
+		
+		searchParameters.setLimitBy(LimitBy.UNLIMITED);
+		searchParameters.setLimit(0);
+		searchParameters.setMaxPermissionChecks(100000);
+		searchParameters.setMaxPermissionCheckTimeMillis(100000);
 
 		List<NodeRef> list = new ArrayList<>();
 		
