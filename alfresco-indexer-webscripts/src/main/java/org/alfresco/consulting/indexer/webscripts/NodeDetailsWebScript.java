@@ -258,10 +258,13 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 		
 		//Use the last breadcrump to get the foldercontentpath
 		String folderContentPath = breadCrumbs.get(breadCrumbs.size() -1).getUrl();
+		
 		//Fix spaceencoding
 		folderName = folderName.replace(" ", spaceCorrectEncode);
 		
-		if(breadCrumbs.size()>1){
+		if(breadCrumbs.size() == 1){
+			folderContentPath += "#filter=path|%2F" + folderName;
+		}else if(breadCrumbs.size()>1){
 			folderContentPath += "%2F" + folderName;
 		}
 				
