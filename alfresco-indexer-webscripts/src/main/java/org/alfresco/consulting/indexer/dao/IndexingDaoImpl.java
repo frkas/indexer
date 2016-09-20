@@ -28,9 +28,6 @@ public class IndexingDaoImpl {
 			throw new IllegalArgumentException("Maximum results must be a reasonable number.");
 		}
 
-		logger.debug(
-				"[getNodesByAclChangesetId] On Store " + storeRef.getProtocol() + "://" + storeRef.getIdentifier());
-
 		NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
 		nodeLoadEntity.setStoreId(store.getFirst());
 		nodeLoadEntity.setStoreProtocol(storeRef.getProtocol());
@@ -51,8 +48,6 @@ public class IndexingDaoImpl {
 		if (maxResults <= 0 || maxResults == Integer.MAX_VALUE) {
 			throw new IllegalArgumentException("Maximum results must be a reasonable number.");
 		}
-
-		logger.debug("[getNodesByTransactionId] On Store " + storeRef.getProtocol() + "://" + storeRef.getIdentifier());
 
 		NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
 		nodeLoadEntity.setStoreId(store.getFirst());
@@ -75,9 +70,6 @@ public class IndexingDaoImpl {
 			throw new IllegalArgumentException("Maximum results must be a reasonable number.");
 		}
 
-		logger.debug("[getNodesByOtherTransactionId] On Store " + storeRef.getProtocol() + "://"
-				+ storeRef.getIdentifier());
-
 		NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
 		nodeLoadEntity.setStoreId(store.getFirst());
 		nodeLoadEntity.setStoreProtocol(storeRef.getProtocol());
@@ -98,9 +90,6 @@ public class IndexingDaoImpl {
 		if (maxResults <= 0 || maxResults == Integer.MAX_VALUE) {
 			throw new IllegalArgumentException("Maximum results must be a reasonable number.");
 		}
-
-		logger.debug("[getNodesByDeletedObjectsTransactionId] On Store " + storeRef.getProtocol() + "://"
-				+ storeRef.getIdentifier());
 
 		NodeBatchLoadEntity nodeLoadEntity = new NodeBatchLoadEntity();
 		nodeLoadEntity.setStoreId(store.getFirst());

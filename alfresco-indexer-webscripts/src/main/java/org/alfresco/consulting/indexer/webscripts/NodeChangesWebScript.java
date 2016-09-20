@@ -142,11 +142,6 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 			startTransactionId = lastOtherTxnId;
 		}
 
-		logger.debug(String.format(
-				"Invoking Changes Webscript, using the following params\n" + "lastTxnId: %s\n"
-						+ "lastAclChangesetId: %s\n" + "storeId: %s\n" + "storeProtocol: %s\n" + "maxTxns: %s\n",
-						lastTxnId, lastAclChangesetId, storeId, storeProtocol, maxTxns));
-
 		// Getting the Store ID on which the changes are requested
 		Pair<Long, StoreRef> store = nodeDao.getStore(new StoreRef(storeProtocol, storeId));
 		if (store == null) {
@@ -160,6 +155,8 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		if (lastTxnId == null) {
 			lastTxnId = new Long(0);
 		}
+		
+	
 		List<NodeEntity> nodesFromTxns = indexingService.getNodesByTransactionId(store, lastTxnId, maxTxns);
 		if (nodesFromTxns != null && nodesFromTxns.size() > 0) {
 			nodes.addAll(nodesFromTxns);
@@ -171,6 +168,7 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		}
 		List<NodeEntity> nodesFromAcls = indexingService.getNodesByAclChangesetId(store, lastAclChangesetId,
 				maxAclChangesets);
+		
 		if (nodesFromAcls != null && nodesFromAcls.size() > 0) {
 			nodes.addAll(nodesFromAcls);
 			lastAclChangesetId = nodesFromAcls.get(nodesFromAcls.size() - 1).getAclChangesetId();
@@ -294,8 +292,6 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 					"Cannot add BeansWrapper for static QName.createQName method to be used from a Freemarker template",
 					e);
 		}
-
-		logger.debug(String.format("Attaching %s nodes to the WebScript template", nodes.size()));
 
 		return model;
 	}

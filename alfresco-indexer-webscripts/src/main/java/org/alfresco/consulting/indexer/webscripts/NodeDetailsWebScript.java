@@ -113,8 +113,6 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 
 		NodeRef nodeRef = new NodeRef(storeProtocol, storeId, uuid);
 
-		logger.debug(String.format("Invoking ACLs Webscript, using the following params\n" + "nodeRef: %s\n", nodeRef));
-
 		// Processing properties
 		Map<QName, Serializable> propertyMap = nodeService.getProperties(nodeRef);
 		Map<String, Pair<String, String>> properties = toStringMap(propertyMap);
@@ -477,13 +475,9 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 
 	private List<Acl> getAllAcls(Long nodeAclId) {
 
-		logger.debug("getAllAcls from " + nodeAclId);
-
 		Acl acl = aclDao.getAcl(nodeAclId);
 
 		Long parentNodeAclId = acl.getInheritsFrom();
-
-		logger.debug("parent acl is " + parentNodeAclId);
 
 		if (parentNodeAclId == null || !acl.getInherits()) {
 			List<Acl> ret = new ArrayList<Acl>();
@@ -491,8 +485,6 @@ public class NodeDetailsWebScript extends DeclarativeWebScript {
 			return ret;
 		} else {
 			List<Acl> inheritedAcls = getAllAcls(parentNodeAclId);
-
-			logger.debug("Current acl with id " + nodeAclId + " is " + acl);
 
 			inheritedAcls.add(acl);
 			return inheritedAcls;
