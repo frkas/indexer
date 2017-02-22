@@ -10,6 +10,7 @@ public class NodeEntity extends org.alfresco.repo.domain.node.NodeEntity {
 	private Long aclChangesetId;
 	private Long transactionId;
 	private String userName;
+	private String propertiesUrl;
 
 	private boolean deleted = false;
 
@@ -78,5 +79,13 @@ public class NodeEntity extends org.alfresco.repo.domain.node.NodeEntity {
 
 	public void setTransactionId(Long transactionId) {
 		this.transactionId = transactionId;
+	}
+
+	public String getPropertiesUrl() {
+		return propertiesUrl;
+	}
+
+	public void setPropertiesUrl(String propertiesUrl) {
+		this.propertiesUrl = propertiesUrl;
 	}
 }

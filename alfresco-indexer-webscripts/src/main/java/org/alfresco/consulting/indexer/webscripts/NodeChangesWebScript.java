@@ -155,8 +155,8 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		if (lastTxnId == null) {
 			lastTxnId = new Long(0);
 		}
-		
-	
+
+
 		List<NodeEntity> nodesFromTxns = indexingService.getNodesByTransactionId(store, lastTxnId, maxTxns);
 		if (nodesFromTxns != null && nodesFromTxns.size() > 0) {
 			nodes.addAll(nodesFromTxns);
@@ -168,7 +168,7 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		}
 		List<NodeEntity> nodesFromAcls = indexingService.getNodesByAclChangesetId(store, lastAclChangesetId,
 				maxAclChangesets);
-		
+
 		if (nodesFromAcls != null && nodesFromAcls.size() > 0) {
 			nodes.addAll(nodesFromAcls);
 			lastAclChangesetId = nodesFromAcls.get(nodesFromAcls.size() - 1).getAclChangesetId();
@@ -202,8 +202,10 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 
 		String userName = "";
 
+		String propertiesUrl = "";
+
 		//Iterate all changed nodes to see if deleted is there or not. If its not add it
-		//Also check if there is a person. Need to change propertiesurl
+		//Also check if there is a person or trrr. Need to change propertiesurl
 		Iterator<NodeEntity> itChangedNodes = nodes.iterator();
 		while (itChangedNodes.hasNext()) {
 
@@ -221,10 +223,35 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 
 				changedNodeEntity.setUserName(userName);
 
+				propertiesUrl = getPersonPropertiesUrlTemplate() + userName;
+
+			}else if(changedNodeEntity.getTypeName().equals("reflexResource")){
+				
+				NodeRef trrrNode = new NodeRef("workspace://SpacesStore/"+ changedNodeUUID);
+
+				//Check if exists, If not its in versionstore then its deleted
+				if(!_nodeService.exists(trrrNode)){
+					changedNodeEntity.setDeleted(true);
+					propertiesUrl = null;
+					
+				}else{
+
+					Map<QName, Serializable> properties = _nodeService.getProperties(trrrNode);
+
+					String URI = "http://www.scania.com/model/teamroom-reflex-resources/1.0";
+					QName TRRR_PROP_NAME = QName.createQName(URI, "name");
+
+					String trrrName = properties.get(TRRR_PROP_NAME).toString();
+
+					propertiesUrl = getTrrrPropertiesUrlTemplate() + trrrName;
+				}
 			}else{
 				userName = "";
+				propertiesUrl = propertiesUrlTemplate + storeProtocol + "/" + storeId + "/" + changedNodeUUID; 
 			}
-
+			
+			changedNodeEntity.setPropertiesUrl(propertiesUrl);
+			
 			Iterator<NodeEntity> itDeletedNodes = deletedNodes.iterator();
 
 			int i = 0;
@@ -276,9 +303,7 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		model.put("lastAclChangesetId", lastAclChangesetId);
 		model.put("storeId", storeId);
 		model.put("storeProtocol", storeProtocol);
-		model.put("propertiesUrlTemplate", propertiesUrlTemplate);
-		model.put("personPropertiesUrlTemplate", personPropertiesUrlTemplate);
-
+		
 		// This allows to call the static method QName.createQName from the FTL
 		// template
 		try {
@@ -324,14 +349,14 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		searchParameters.setQuery(searchString);
 		searchParameters.setMaxItems(toIndex - startIndex + 1);
 		searchParameters.setSkipCount(startIndex);
-		
+
 		searchParameters.setLimitBy(LimitBy.UNLIMITED);
 		searchParameters.setLimit(0);
 		searchParameters.setMaxPermissionChecks(100000);
 		searchParameters.setMaxPermissionCheckTimeMillis(100000);
 
 		List<NodeRef> list = new ArrayList<>();
-		
+
 		ResultSet rs = null;
 
 		try {
@@ -345,7 +370,7 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 				rs = null;
 			}
 		}
-		
+
 		Set<NodeEntity> reindexPersonsNodes = new HashSet<NodeEntity>();
 
 		for (int i = 0; i < list.size(); i++) {
@@ -353,13 +378,13 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 			Map<QName, Serializable> properties = _nodeService.getProperties(list.get(i));
 
 			NodeEntity n = new NodeEntity();
-			
+
 			String userName = properties.get(ContentModel.PROP_USERNAME).toString();
-			
+
 			n.setUserName(userName);
 			n.setUuid(properties.get(ContentModel.PROP_NODE_UUID).toString());
 			n.setTypeName("cm:person");
-			
+
 			reindexPersonsNodes.add(n);
 		}
 
@@ -542,6 +567,7 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 
 	private String propertiesUrlTemplate;
 	private String personPropertiesUrlTemplate;
+	private String trrrPropertiesUrlTemplate;
 
 	private int maxNodesPerAcl = 1000;
 	private int maxNodesPerTxns = 1000;
@@ -554,6 +580,14 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 	private final String content = "cm:content";
 	private final String published = "cm:corporate_information_collection";
 
+
+	public String getTrrrPropertiesUrlTemplate() {
+		return trrrPropertiesUrlTemplate;
+	}
+
+	public void setTrrrPropertiesUrlTemplate(String trrrPropertiesUrlTemplate) {
+		this.trrrPropertiesUrlTemplate = trrrPropertiesUrlTemplate;
+	}
 	public String getPersonPropertiesUrlTemplate() {
 		return personPropertiesUrlTemplate;
 	}

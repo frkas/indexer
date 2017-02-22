@@ -54,7 +54,7 @@
 		node.transaction_id &lt;= #{maxId} and
 		np.actual_type_n = 6 and
 		(qname.local_name='folder' or
-		qname.local_name='site' or qname.local_name='person')
+		qname.local_name='site' or qname.local_name='person' or qname.local_name='reflexResource')
 		order by
 		node.transaction_id ASC
 

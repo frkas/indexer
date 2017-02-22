@@ -5,7 +5,7 @@
       {
         <#assign qname=QName.createQName(node.getTypeNamespace(),node.getTypeName()) >
         <#assign suffix="/"+storeProtocol+"/"+storeId+"/"+node.uuid >
-        <#if node.userName??>"propertiesUrl" : "${personPropertiesUrlTemplate + node.userName}",<#elseif propertiesUrlTemplate??>"propertiesUrl" : "${propertiesUrlTemplate + suffix}",</#if>
+        <#if node.propertiesUrl??>"propertiesUrl" : "${node.propertiesUrl}",</#if>
         "uuid" : "${node.uuid}",
         "type" : "${qname.toPrefixString(nsResolver)}",
         "deleted" : ${node.isDeleted()?string}
