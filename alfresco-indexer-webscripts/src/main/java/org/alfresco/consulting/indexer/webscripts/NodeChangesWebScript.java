@@ -247,7 +247,7 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 				}
 			}else{
 				userName = "";
-				propertiesUrl = propertiesUrlTemplate + storeProtocol + "/" + storeId + "/" + changedNodeUUID; 
+				propertiesUrl = propertiesUrlTemplate + "/" + storeProtocol + "/" + storeId + "/" + changedNodeUUID; 
 			}
 			
 			changedNodeEntity.setPropertiesUrl(propertiesUrl);
@@ -258,11 +258,12 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 			while (itDeletedNodes.hasNext()) {
 
 				NodeEntity deletedNodeEntity = itDeletedNodes.next();
-				String deletedNodeUUID = deletedNodeEntity.getUuid();
+				String deletedNodeUUID = deletedNodeEntity.getUuid();			
 
 				if(changedNodeUUID.equals(deletedNodeUUID)){
 					//Remove from list
 					deletedNodes.remove(i);
+					changedNodeEntity.setDeleted(true);
 					break;
 				}
 				i++;
