@@ -200,6 +200,14 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		List<NodeEntity> deletedNodes = indexingService.getNodesByDeletedObjectsTransactionId(store, startTransactionId,
 				maxTransactions);
 
+		//Get a list of deleted nodeUUIDs. Used later to check duplicates in changed nodes
+		Iterator<NodeEntity> itDeletedNodes = deletedNodes.iterator();
+		List<String> deletedUUIDs = new ArrayList<>();
+		while (itDeletedNodes.hasNext()) {
+			NodeEntity deletedNodeEntity = itDeletedNodes.next();
+			deletedUUIDs.add(deletedNodeEntity.getUuid());
+		}
+
 		String userName = "";
 
 		String propertiesUrl = "";
@@ -213,69 +221,58 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 
 			String changedNodeUUID = changedNodeEntity.getUuid();
 
-			if(changedNodeEntity.getTypeName().equals("person")){
+			//Check if changed node exits in deleted. If it does, just remove it from list
+			if(deletedUUIDs.contains(changedNodeUUID)){
+				itChangedNodes.remove();
+			} else{
 
-				NodeRef personNode = new NodeRef("workspace://SpacesStore/"+ changedNodeUUID);
+				if(changedNodeEntity.getTypeName().equals("person")){
 
-				Map<QName, Serializable> properties = _nodeService.getProperties(personNode);
+					NodeRef personNode = new NodeRef("workspace://SpacesStore/"+ changedNodeUUID);
 
-				userName = properties.get(ContentModel.PROP_USERNAME).toString();
+					Map<QName, Serializable> properties = _nodeService.getProperties(personNode);
 
-				changedNodeEntity.setUserName(userName);
+					userName = properties.get(ContentModel.PROP_USERNAME).toString();
 
-				propertiesUrl = getPersonPropertiesUrlTemplate() + userName;
+					changedNodeEntity.setUserName(userName);
 
-			}else if(changedNodeEntity.getTypeName().equals("reflexResource")){
-				
-				NodeRef trrrNode = new NodeRef("workspace://SpacesStore/"+ changedNodeUUID);
+					propertiesUrl = getPersonPropertiesUrlTemplate() + userName;
 
-				//Check if exists, If not its in versionstore then its deleted
-				if(!_nodeService.exists(trrrNode)){
-					changedNodeEntity.setDeleted(true);
-					propertiesUrl = null;
-					
+				}else if(changedNodeEntity.getTypeName().equals("reflexResource")){
+
+					NodeRef trrrNode = new NodeRef("workspace://SpacesStore/"+ changedNodeUUID);
+
+					//Check if exists, If not its in versionstore then its deleted
+					if(!_nodeService.exists(trrrNode)){
+						changedNodeEntity.setDeleted(true);
+						propertiesUrl = null;
+
+					}else{
+
+						Map<QName, Serializable> properties = _nodeService.getProperties(trrrNode);
+
+						String URI = "http://www.scania.com/model/teamroom-reflex-resources/1.0";
+						QName TRRR_PROP_NAME = QName.createQName(URI, "name");
+
+						String trrrName = properties.get(TRRR_PROP_NAME).toString();
+
+						propertiesUrl = getTrrrPropertiesUrlTemplate() + trrrName;
+					}
 				}else{
-
-					Map<QName, Serializable> properties = _nodeService.getProperties(trrrNode);
-
-					String URI = "http://www.scania.com/model/teamroom-reflex-resources/1.0";
-					QName TRRR_PROP_NAME = QName.createQName(URI, "name");
-
-					String trrrName = properties.get(TRRR_PROP_NAME).toString();
-
-					propertiesUrl = getTrrrPropertiesUrlTemplate() + trrrName;
+					userName = "";
+					propertiesUrl = propertiesUrlTemplate + "/" + storeProtocol + "/" + storeId + "/" + changedNodeUUID; 
 				}
-			}else{
-				userName = "";
-				propertiesUrl = propertiesUrlTemplate + "/" + storeProtocol + "/" + storeId + "/" + changedNodeUUID; 
-			}
-			
-			changedNodeEntity.setPropertiesUrl(propertiesUrl);
-			
-			Iterator<NodeEntity> itDeletedNodes = deletedNodes.iterator();
 
-			int i = 0;
-			while (itDeletedNodes.hasNext()) {
-
-				NodeEntity deletedNodeEntity = itDeletedNodes.next();
-				String deletedNodeUUID = deletedNodeEntity.getUuid();			
-
-				if(changedNodeUUID.equals(deletedNodeUUID)){
-					//Remove from list
-					deletedNodes.remove(i);
-					changedNodeEntity.setDeleted(true);
-					break;
-				}
-				i++;
+				changedNodeEntity.setPropertiesUrl(propertiesUrl);
 			}
 		}
 
 		//Iterate all deleted and set deleted = true
-		Iterator<NodeEntity> itDeletedNodes = deletedNodes.iterator();
-		itDeletedNodes = deletedNodes.iterator();
-		while (itDeletedNodes.hasNext()) {
+		Iterator<NodeEntity> itRestOfDeletedNodes = deletedNodes.iterator();
+		itRestOfDeletedNodes = deletedNodes.iterator();
+		while (itRestOfDeletedNodes.hasNext()) {
 
-			NodeEntity deletedNodeEntity = itDeletedNodes.next();
+			NodeEntity deletedNodeEntity = itRestOfDeletedNodes.next();
 			deletedNodeEntity.setDeleted(true);
 		}
 
@@ -304,7 +301,7 @@ public class NodeChangesWebScript extends DeclarativeWebScript {
 		model.put("lastAclChangesetId", lastAclChangesetId);
 		model.put("storeId", storeId);
 		model.put("storeProtocol", storeProtocol);
-		
+
 		// This allows to call the static method QName.createQName from the FTL
 		// template
 		try {
