@@ -210,6 +210,7 @@
 		#{maxId} and
 		(np.actual_type_n = 3 or np.actual_type_n = 21) and
 		mime.mimetype_str != 'text/xml'
+		and node.store_id != 4
 		order by
 		node.transaction_id ASC
 	</select>
